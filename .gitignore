@@ -1,0 +1,8 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/OsmReader/v15
+/obj/Debug/netcoreapp2.1
+/obj
+/Properties/launchSettings.json

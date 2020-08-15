@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.8" />
     <PackageReference Include="Npgsql" Version="4.1.4" />
     <PackageReference Include="OsmSharp" Version="6.2.0" />
     <PackageReference Include="OsmSharp.Geo" Version="6.2.0" />
