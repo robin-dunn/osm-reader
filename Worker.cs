@@ -51,6 +51,8 @@ namespace OsmReader
 				}
 			}
 
+			dbClient.CreateGeography();
+
 			Console.WriteLine("Upload complete.");
 		}
 	}

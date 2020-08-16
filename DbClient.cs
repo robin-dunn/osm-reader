@@ -1,5 +1,4 @@
 ﻿using Npgsql;
-using NpgsqlTypes;
 using System.Collections.Generic;
 
 namespace OsmReader
@@ -13,7 +12,7 @@ namespace OsmReader
 			_conn = new NpgsqlConnection(dbConnString);
 			_conn.Open();
 
-			using (var cmd = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS nodes (id bigint null, latitude float8 null, longitude float8 null);", _conn))
+			using (var cmd = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS nodes (id bigint null, latitude float8 null, longitude float8 null, location geography(point, 4326) null);", _conn))
 			{
 				cmd.ExecuteNonQuery();
 			}
@@ -52,6 +51,16 @@ namespace OsmReader
 
 				writer.Complete();
 			}
+		}
+
+		public void CreateGeography()
+		{
+			using (var cmd = new NpgsqlCommand($"update nodes set location = ST_SetSRID(ST_Point(longitude, latitude), 4326)::geography;", _conn))
+			{
+				cmd.ExecuteNonQuery();
+			}
+
+			// TODO: add spatial index on location column.
 		}
 	}
 }

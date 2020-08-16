@@ -6,3 +6,5 @@
 /obj/Debug/netcoreapp2.1
 /obj
 /Properties/launchSettings.json
+*.dtbcache
+/bin/Debug/netcoreapp2.1
