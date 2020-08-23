@@ -55,28 +55,29 @@ tags text[] null);");
 			}
 		}
 
-		public void BulkInsertNodes(List<OsmSharp.Node> nodes)
+		public int BulkInsertNodes(List<OsmSharp.Node> nodes)
 		{
+			int countInserted = 0;
+
 			using (var writer = _conn.BeginBinaryImport("COPY nodes (id, latitude, longitude, tags) FROM STDIN (FORMAT BINARY)"))
 			{
 				foreach (var node in nodes)
 				{
-					if (node.Tags == null || !node.Tags.Any(t => t.Key == "highway"))
-					{
-						continue;
-					}
 					writer.StartRow();
 					writer.WriteNullableLong(node.Id);
 					writer.WriteNullableDouble(node.Latitude);
 					writer.WriteNullableDouble(node.Longitude);
 					WriteTags(writer, node);
+					countInserted++;
 				}
 
 				writer.Complete();
 			}
+
+			return countInserted;
 		}
 
-		public void BulkInsertWays(List<OsmSharp.Way> ways)
+		public int BulkInsertWays(List<OsmSharp.Way> ways)
 		{
 			List<NetworkLink> links = new List<NetworkLink>();
 
@@ -84,6 +85,8 @@ tags text[] null);");
 			{
 				foreach (var way in ways)
 				{
+					if (!AcceptWay(way)) continue;
+
 					writer.StartRow();
 					writer.WriteNullableLong(way.Id);
 
@@ -106,7 +109,23 @@ tags text[] null);");
 				writer.Complete();
 			}
 
-			BulkInsertLinks(links);
+			return BulkInsertLinks(links);
+		}
+
+		private bool AcceptWay(Way way)
+		{
+			if (way.Tags != null)
+			{
+				foreach (var tag in way.Tags)
+				{
+					if (tag.Key == "highway")
+					{
+						return true;
+					}
+				}
+			}
+
+			return false;
 		}
 
 		private void WriteTags(NpgsqlBinaryImporter writer, OsmGeo item, Action<Tag> processTag = null)
@@ -127,11 +146,13 @@ tags text[] null);");
 			}
 		}
 
-		private void BulkInsertLinks(List<NetworkLink> links)
+		private int BulkInsertLinks(List<NetworkLink> links)
 		{
+			int countInserted = 0;
+
 			if (links == null || !links.Any())
 			{
-				return;
+				return countInserted;
 			}
 
 			using (var writer = _conn.BeginBinaryImport("COPY links (start_node_id, end_node_id, pedestrian) FROM STDIN (FORMAT BINARY)"))
@@ -142,10 +163,13 @@ tags text[] null);");
 					writer.Write(link.StartNodeId);
 					writer.Write(link.EndNodeId);
 					writer.Write(link.Pedestrian);
+					countInserted++;
 				}
 
 				writer.Complete();
 			}
+
+			return countInserted;
 		}
 
 		public List<NetworkNode> GetNodes(List<long> nodeIds = null)
@@ -175,7 +199,7 @@ tags text[] null);");
 		{
 			var links = new List<NetworkLink>();
 
-			using (var reader = _conn.BeginBinaryExport("COPY links (start_node_id, end_node_id, pedestrian) TO STDOUT (FORMAT BINARY)"))
+			using (var reader = _conn.BeginBinaryExport("COPY (select start_node_id, end_node_id, pedestrian from links order by start_node_id) TO STDOUT (FORMAT BINARY)"))
 			{
 				while (reader.StartRow() > -1)
 				{

@@ -38,9 +38,8 @@ namespace OsmReader
 
 						if (nodes.Count >= batchSize)
 						{
-							_dbClient.BulkInsertNodes(nodes);
+							countNodesWritten += _dbClient.BulkInsertNodes(nodes);
 							nodes.Clear();
-							countNodesWritten += batchSize;
 							Console.WriteLine("Loaded " + countNodesWritten + " nodes.");
 						}
 					}
@@ -50,9 +49,8 @@ namespace OsmReader
 
 						if (ways.Count >= batchSize)
 						{
-							_dbClient.BulkInsertWays(ways);
+							countWaysWritten += _dbClient.BulkInsertWays(ways);
 							ways.Clear();
-							countWaysWritten += batchSize;
 							Console.WriteLine("Loaded " + countWaysWritten + " ways.");
 						}
 					}
@@ -76,22 +74,52 @@ namespace OsmReader
 			}
 
 			Console.WriteLine("Count links: " + links.Count);
-			var nodes = _dbClient.GetNodes(nodeIds.ToList());
+			var nodes = _dbClient.GetNodes();
 			Console.WriteLine("Count nodes: " + nodes.Count);
 
 			Console.WriteLine($"Writing to file {outputFilename}...");
+
+			Dictionary<long, NetworkNode> nodesDict = new Dictionary<long, NetworkNode>();
 
 			using (var file = new StreamWriter(outputFilename, append: false))
 			{
 				file.WriteLine(nodes.Count);
 
-				foreach (var node in nodes)
-					file.WriteLine($"{node.Id} {node.Latitude} {node.Longitude}");
+				foreach (var n in nodes) nodesDict.Add(n.Id, n);
 
 				file.WriteLine(links.Count);
 
-				foreach (var link in links)
-					file.WriteLine($"{link.Id} {link.StartNodeId} {link.EndNodeId}");
+				long nodeId = -1;
+				NetworkNode node = default(NetworkNode);
+
+				for(int i = 0; i < links.Count; i++)
+				{
+					var link = links[i];
+					
+					if (nodeId != link.StartNodeId)
+					{
+						if (nodeId > -1)
+						{
+							file.WriteLine($"{node.Id} {node.Latitude} {node.Longitude} {node.LinkCount} {node.FirstLinkIndex}");
+						}
+
+						nodeId = link.StartNodeId;
+
+						try
+						{
+							node = nodesDict[nodeId];
+							node.FirstLinkIndex = i;
+						}
+						catch (Exception ex)
+						{
+							continue;
+						}
+					}
+
+					node.LinkCount++;
+
+					// file.WriteLine($"{link.Id} {link.StartNodeId} {link.EndNodeId}");
+				}
 			}
 		}
 	}

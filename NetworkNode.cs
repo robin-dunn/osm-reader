@@ -1,5 +1,4 @@
-﻿
-namespace OsmReader
+﻿namespace OsmReader
 {
 	public struct NetworkNode
 	{
@@ -8,5 +7,9 @@ namespace OsmReader
 		public double Latitude;
 
 		public double Longitude;
+
+		public byte LinkCount;
+
+		public long FirstLinkIndex;
 	}
 }
