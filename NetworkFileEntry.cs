@@ -3,10 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace OsmReader
 {
-	[StructLayout(LayoutKind.Sequential)]
-	public unsafe struct NetworkFileEntry
+	public struct NetworkFileEntry
 	{
-		public fixed char Name[50];
+		public string Name;
 
 		public long Offset;
 
