@@ -65,62 +65,12 @@ namespace OsmReader
 		public void ExportNetworkFile(string outputFilename)
 		{
 			var links = _dbClient.GetLinks();
-			HashSet<long> nodeIds = new HashSet<long>(links.Count);
-
-			foreach (var link in links)
-			{
-				nodeIds.Add(link.StartNodeId);
-				nodeIds.Add(link.EndNodeId);
-			}
-
 			Console.WriteLine("Count links: " + links.Count);
+
 			var nodes = _dbClient.GetNodes();
 			Console.WriteLine("Count nodes: " + nodes.Count);
 
-			Console.WriteLine($"Writing to file {outputFilename}...");
-
-			Dictionary<long, NetworkNode> nodesDict = new Dictionary<long, NetworkNode>();
-
-			using (var file = new StreamWriter(outputFilename, append: false))
-			{
-				file.WriteLine(nodes.Count);
-
-				foreach (var n in nodes) nodesDict.Add(n.Id, n);
-
-				file.WriteLine(links.Count);
-
-				long nodeId = -1;
-				NetworkNode node = default(NetworkNode);
-
-				for(int i = 0; i < links.Count; i++)
-				{
-					var link = links[i];
-					
-					if (nodeId != link.StartNodeId)
-					{
-						if (nodeId > -1)
-						{
-							file.WriteLine($"{node.Id} {node.Latitude} {node.Longitude} {node.LinkCount} {node.FirstLinkIndex}");
-						}
-
-						nodeId = link.StartNodeId;
-
-						try
-						{
-							node = nodesDict[nodeId];
-							node.FirstLinkIndex = i;
-						}
-						catch (Exception ex)
-						{
-							continue;
-						}
-					}
-
-					node.LinkCount++;
-
-					// file.WriteLine($"{link.Id} {link.StartNodeId} {link.EndNodeId}");
-				}
-			}
+			NetworkFile.Write(outputFilename, nodes, links);
 		}
 	}
 }
