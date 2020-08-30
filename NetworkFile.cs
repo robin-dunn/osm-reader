@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace OsmReader
 {
@@ -8,9 +9,13 @@ namespace OsmReader
 	{
 		public List<NetworkFileEntry> Entries { get; } = new List<NetworkFileEntry>();
 
+		public int HeaderSize { get => Entries.Count * NetworkFileEntry.SizeInBytes; }
+
 		public static void Write(string outputFilename, List<NetworkNode> nodes, List<NetworkLink> links)
 		{
 			var nf = new NetworkFile();
+
+			links.Sort((x, y) => x.StartNodeId.CompareTo(y.StartNodeId));
 
 			Console.WriteLine($"Writing to file {outputFilename}...");
 
@@ -20,24 +25,23 @@ namespace OsmReader
 			{
 				Name = "Nodes",
 				Offset = 0,
-				RecordCount = nodes.Count
+				RecordCount = (uint)nodes.Count
 			});
 
 			nf.Entries.Add(new NetworkFileEntry
 			{
 				Name = "Links",
 				Offset = 0,
-				RecordCount = links.Count
+				RecordCount = (uint)links.Count
 			});
 
-			using (var file = new StreamWriter(outputFilename, append: false))
+			using (var sw = new StreamWriter(outputFilename, append: false))
 			{
-				file.WriteLine(nodes.Count);
+				nf.WriteHeader(sw);
+
+				nf.Entries.First(e => e.Name == "Nodes").Offset = sw.BaseStream.Position;
 
 				foreach (var n in nodes) nodesDict.Add(n.Id, n);
-
-				file.WriteLine(links.Count);
-
 				long nodeId = -1;
 				NetworkNode node = default(NetworkNode);
 
@@ -45,12 +49,11 @@ namespace OsmReader
 				{
 					var link = links[i];
 
-					if (nodeId != link.StartNodeId)
+					if (link.StartNodeId != nodeId)
 					{
 						if (nodeId > -1)
 						{
-							nf.WriteNodeRecord(node);
-							// file.WriteLine($"{node.Id} {node.Latitude} {node.Longitude} {node.LinkCount} {node.FirstLinkIndex}");
+							nf.WriteNodeRecord(sw, node);
 						}
 
 						nodeId = link.StartNodeId;
@@ -67,20 +70,44 @@ namespace OsmReader
 					}
 
 					node.LinkCount++;
-
-					// file.WriteLine($"{link.Id} {link.StartNodeId} {link.EndNodeId}");
 				}
+
+				nf.Entries.First(e => e.Name == "Links").Offset = sw.BaseStream.Position;
+
+				foreach (var link in links)
+				{
+					nf.WriteLinkRecord(sw, link);
+				}
+
+				sw.BaseStream.Seek(0, SeekOrigin.Begin);
+				nf.WriteHeader(sw);
 			}
 		}
 
-		private void WriteNodeRecord(NetworkNode node)
+		private void WriteHeader(StreamWriter sw)
 		{
-
+			foreach (var entry in Entries)
+			{
+				sw.Write(entry.NameBytes);
+				sw.Write(entry.Offset);
+				sw.Write(entry.RecordCount);
+				sw.Write(entry.RecordSize);
+			}
 		}
 
-		private void WriteLinkRecord(NetworkLink link)
+		private void WriteNodeRecord(StreamWriter sw, NetworkNode node)
 		{
+			sw.Write(node.Id);
+			sw.Write(node.Latitude);
+			sw.Write(node.Longitude);
+			sw.Write(node.LinkCount);
+			sw.Write(node.FirstLinkIndex);
+		}
 
+		private void WriteLinkRecord(StreamWriter sw, NetworkLink link)
+		{
+			sw.Write(link.EndNodeId);
+			sw.Write(link.Pedestrian);
 		}
 	}
 }
