@@ -10,14 +10,20 @@ namespace OsmReader
 			Parser.Default.ParseArguments<CliOptions>(args)
 				  .WithParsed(o =>
 				  {
-					  var worker = new Worker($"Host={o.Host};Username={o.Username};Password={o.Password};Database={o.Database}");
+					  var worker = new Worker($"Host={o.Host};Username={o.Username};Password={o.Password};Database={o.Database}", o.Schema);
 
 					  worker.ImportData(o.OsmFilename);
 
-					  worker.ExportNetworkFile(o.OsmFilename + ".dat");
+                      string networkFileName = o.OsmFilename + ".dat";
 
-					  Console.WriteLine("Process complete.");
-				  });
+					  worker.ExportNetworkFile(networkFileName);
+
+					  Console.WriteLine("Export complete.");
+
+                      worker.CheckNetworkFile(networkFileName);
+
+                      Console.WriteLine("Process complete.");
+                  });
 		}
 	}
 }

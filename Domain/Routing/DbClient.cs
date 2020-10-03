@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using Framework;
+using Npgsql;
 using OsmSharp;
 using OsmSharp.Tags;
 using System;
@@ -6,14 +7,20 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace OsmReader
+namespace Domain.Routing
 {
-	class DbClient
+	public class DbClient
 	{
 		private NpgsqlConnection _conn;
+        private string _dbSchema;
 
-		public DbClient(string dbConnString)
+        public string SchemaPrefix {
+            get { return !string.IsNullOrWhiteSpace(_dbSchema) ? $"\"{_dbSchema}\"." : string.Empty; }
+        }
+
+		public DbClient(string dbConnString, string dbSchema)
 		{
+            _dbSchema = dbSchema;
 			_conn = new NpgsqlConnection(dbConnString);
 			_conn.Open();
 
@@ -22,18 +29,23 @@ namespace OsmReader
 		
 		public void CreateTables()
 		{
-			ExecuteNonQuery("DROP TABLE IF EXISTS nodes;");
-			ExecuteNonQuery("DROP TABLE IF EXISTS ways;");
-			ExecuteNonQuery("DROP TABLE IF EXISTS links;");
+            ExecuteNonQuery($"DROP TABLE IF EXISTS {SchemaPrefix}nodes;");
+			ExecuteNonQuery($"DROP TABLE IF EXISTS {SchemaPrefix}ways;");
+			ExecuteNonQuery($"DROP TABLE IF EXISTS {SchemaPrefix}links;");
 
-			ExecuteNonQuery(@"CREATE TABLE IF NOT EXISTS nodes (
+            if (!string.IsNullOrWhiteSpace(_dbSchema))
+            {
+                ExecuteNonQuery($"CREATE SCHEMA IF NOT EXISTS \"{_dbSchema}\";");
+            }
+
+            ExecuteNonQuery($@"CREATE TABLE IF NOT EXISTS {SchemaPrefix}nodes (
 id bigint null,
 latitude float8 null,
 longitude float8 null, 
 location geography(point, 4326) null,
 tags text[] null);");
-			ExecuteNonQuery("CREATE TABLE IF NOT EXISTS ways (id bigint null, nodes bigint[], tags text[] null);");
-			ExecuteNonQuery("CREATE TABLE IF NOT EXISTS links (id bigint null, start_node_id bigint, end_node_id bigint, pedestrian bool);");
+			ExecuteNonQuery($"CREATE TABLE IF NOT EXISTS {SchemaPrefix}ways (id bigint null, nodes bigint[], tags text[] null);");
+			ExecuteNonQuery($"CREATE TABLE IF NOT EXISTS {SchemaPrefix}links (id bigint null, start_node_id bigint, end_node_id bigint, pedestrian bool);");
 		}
 
 		private void ExecuteNonQuery(string sql)
@@ -59,7 +71,7 @@ tags text[] null);");
 		{
 			int countInserted = 0;
 
-			using (var writer = _conn.BeginBinaryImport("COPY nodes (id, latitude, longitude, tags) FROM STDIN (FORMAT BINARY)"))
+			using (var writer = _conn.BeginBinaryImport($"COPY {SchemaPrefix}nodes (id, latitude, longitude, tags) FROM STDIN (FORMAT BINARY)"))
 			{
 				foreach (var node in nodes)
 				{
@@ -81,7 +93,7 @@ tags text[] null);");
 		{
 			List<NetworkLink> links = new List<NetworkLink>();
 
-			using (var writer = _conn.BeginBinaryImport("COPY ways (id, nodes, tags) FROM STDIN (FORMAT BINARY)"))
+			using (var writer = _conn.BeginBinaryImport($"COPY {SchemaPrefix}ways (id, nodes, tags) FROM STDIN (FORMAT BINARY)"))
 			{
 				foreach (var way in ways)
 				{
@@ -155,7 +167,7 @@ tags text[] null);");
 				return countInserted;
 			}
 
-			using (var writer = _conn.BeginBinaryImport("COPY links (start_node_id, end_node_id, pedestrian) FROM STDIN (FORMAT BINARY)"))
+			using (var writer = _conn.BeginBinaryImport($"COPY {SchemaPrefix}links (start_node_id, end_node_id, pedestrian) FROM STDIN (FORMAT BINARY)"))
 			{
 				foreach (var link in links)
 				{
@@ -177,8 +189,8 @@ tags text[] null);");
 			var nodes = new List<NetworkNode>();
 
 			string commandText = nodeIds == null
-				? "COPY nodes (id, latitude, longitude) TO STDOUT (FORMAT BINARY)"
-				: $"COPY (select id, latitude, longitude from nodes where id in ({string.Join(',', nodeIds)})) TO STDOUT (FORMAT BINARY)";
+				? $"COPY {SchemaPrefix}nodes (id, latitude, longitude) TO STDOUT (FORMAT BINARY)"
+				: $"COPY (select id, latitude, longitude from {SchemaPrefix}nodes where id in ({string.Join(",", nodeIds)})) TO STDOUT (FORMAT BINARY)";
 
 			using (var reader = _conn.BeginBinaryExport(commandText))
 			{
@@ -199,7 +211,7 @@ tags text[] null);");
 		{
 			var links = new List<NetworkLink>();
 
-			using (var reader = _conn.BeginBinaryExport("COPY (select start_node_id, end_node_id, pedestrian from links order by start_node_id) TO STDOUT (FORMAT BINARY)"))
+			using (var reader = _conn.BeginBinaryExport($"COPY (select start_node_id, end_node_id, pedestrian from {SchemaPrefix}links order by start_node_id) TO STDOUT (FORMAT BINARY)"))
 			{
 				while (reader.StartRow() > -1)
 				{
@@ -220,7 +232,7 @@ tags text[] null);");
 
 		public void CreateGeography()
 		{
-			ExecuteNonQuery($"update nodes set location = ST_SetSRID(ST_Point(longitude, latitude), 4326)::geography;");
+			ExecuteNonQuery($"update {SchemaPrefix}nodes set location = ST_SetSRID(ST_Point(longitude, latitude), 4326)::geography;");
 
 			// TODO: add spatial index on location column.
 		}

@@ -13,7 +13,10 @@ namespace OsmReader
 		[Option('d', "database", Required = true, HelpText = "Database name.")]
 		public string Database { get; set; }
 
-		[Option('u', "username", Required = true, HelpText = "Database username e.g. 'postgres'.")]
+        [Option('s', "schema", Required = true, HelpText = "Database schema name.")]
+        public string Schema { get; set; }
+
+        [Option('u', "username", Required = true, HelpText = "Database username e.g. 'postgres'.")]
 		public string Username { get; set; }
 
 		[Option('p', "password", Required = true, HelpText = "Database password.")]

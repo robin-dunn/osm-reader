@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using OsmSharp.Streams;
+using Domain.Routing;
 
 namespace OsmReader
 {
@@ -10,9 +11,9 @@ namespace OsmReader
 	{
 		private readonly DbClient _dbClient;
 
-		public Worker(string dbConnString)
+		public Worker(string dbConnString, string dbSchema)
 		{
-			_dbClient = new DbClient(dbConnString);
+			_dbClient = new DbClient(dbConnString, dbSchema);
 		}
 
 		public void ImportData(string osmFilename)
@@ -72,5 +73,10 @@ namespace OsmReader
 
 			NetworkFile.Write(outputFilename, nodes, links);
 		}
+
+        public void CheckNetworkFile(string fileName)
+        {
+            NetworkFile.CheckFile(fileName);
+        }
 	}
 }

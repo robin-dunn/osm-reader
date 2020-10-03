@@ -1,7 +1,7 @@
 ﻿using Npgsql;
 using NpgsqlTypes;
 
-namespace OsmReader
+namespace Framework
 {
 	public static class NpgsqlBinaryImporterExt
 	{

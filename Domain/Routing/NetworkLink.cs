@@ -1,4 +1,4 @@
-﻿namespace OsmReader
+﻿namespace Domain.Routing
 {
 	public struct NetworkLink
 	{

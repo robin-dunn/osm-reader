@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace OsmReader
+namespace Domain.Routing
 {
 	public class NetworkFile
 	{
@@ -23,6 +23,7 @@ namespace OsmReader
 
 			nf.Entries.Add(new NetworkFileEntry
 			{
+                EntryType = NetworkFileEntryType.Nodes,
 				Name = "Nodes",
 				Offset = 0,
 				RecordCount = (uint)nodes.Count
@@ -30,6 +31,7 @@ namespace OsmReader
 
 			nf.Entries.Add(new NetworkFileEntry
 			{
+                EntryType = NetworkFileEntryType.Links,
 				Name = "Links",
 				Offset = 0,
 				RecordCount = (uint)links.Count
@@ -39,7 +41,7 @@ namespace OsmReader
 			{
 				nf.WriteHeader(sw);
 
-				nf.Entries.First(e => e.Name == "Nodes").Offset = sw.BaseStream.Position;
+				nf.Entries.First(e => e.EntryType == NetworkFileEntryType.Nodes).Offset = sw.BaseStream.Position;
 
 				foreach (var n in nodes) nodesDict.Add(n.Id, n);
 				long nodeId = -1;
@@ -63,7 +65,7 @@ namespace OsmReader
 							node = nodesDict[nodeId];
 							node.FirstLinkIndex = i;
 						}
-						catch (Exception ex)
+						catch (Exception)
 						{
 							continue;
 						}
@@ -72,7 +74,7 @@ namespace OsmReader
 					node.LinkCount++;
 				}
 
-				nf.Entries.First(e => e.Name == "Links").Offset = sw.BaseStream.Position;
+				nf.Entries.First(e => e.EntryType == NetworkFileEntryType.Links).Offset = sw.BaseStream.Position;
 
 				foreach (var link in links)
 				{
@@ -84,11 +86,29 @@ namespace OsmReader
 			}
 		}
 
+        public static void CheckFile(string fileName)
+        {
+            // Read header
+
+            using (BinaryReader reader = new BinaryReader(File.Open(fileName, FileMode.Open)))
+            {
+                var entry = new NetworkFileEntry
+                {
+                    EntryType = (NetworkFileEntryType)reader.ReadUInt32(),
+                    Offset = reader.ReadInt64(),
+                    RecordCount = reader.ReadUInt32(),
+                    RecordSize = reader.ReadUInt32()
+                };
+
+                Console.WriteLine(entry.ToString());
+            }
+        }
+
 		private void WriteHeader(StreamWriter sw)
 		{
 			foreach (var entry in Entries)
 			{
-				sw.Write(entry.NameBytes);
+				sw.Write((uint)entry.EntryType);
 				sw.Write(entry.Offset);
 				sw.Write(entry.RecordCount);
 				sw.Write(entry.RecordSize);

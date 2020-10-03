@@ -1,10 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Text;
 
-namespace OsmReader
+namespace Domain.Routing
 {
 	public class NetworkFileEntry
 	{
+        public NetworkFileEntryType EntryType;
+
 		public const int MaxNameCharLength = 100;
 
 		public string Name;
@@ -13,7 +15,7 @@ namespace OsmReader
 
 		public uint RecordCount;
 
-		public int RecordSize;
+		public uint RecordSize;
 
 		public byte[] NameBytes
 		{
@@ -31,6 +33,11 @@ namespace OsmReader
 			}
 		}
 
-		public static int SizeInBytes => MaxNameCharLength * 4 + sizeof(long) + sizeof(long) + sizeof(int); 
-	}
+		public static int SizeInBytes => sizeof(uint) + sizeof(long) + sizeof(uint) + sizeof(uint);
+
+        public override string ToString()
+        {
+            return $"{nameof(EntryType)}={EntryType.ToString()}; {nameof(Offset)}={Offset}; {nameof(RecordCount)}={RecordCount}; {nameof(RecordSize)}={RecordSize};";
+        }
+    }
 }
